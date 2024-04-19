@@ -5,38 +5,38 @@
 
 package httprouter
 
-// CleanPath is the URL version of path.Clean, it returns a canonical URL path
-// for p, eliminating . and .. elements.
+// CleanPath 是 path.Clean 的 URL 版本，它返回 p 的规范 URL 路径，
+// 通过消除 . 和 .. 元素。
 //
-// The following rules are applied iteratively until no further processing can
-// be done:
-//	1. Replace multiple slashes with a single slash.
-//	2. Eliminate each . path name element (the current directory).
-//	3. Eliminate each inner .. path name element (the parent directory)
-//	   along with the non-.. element that precedes it.
-//	4. Eliminate .. elements that begin a rooted path:
-//	   that is, replace "/.." by "/" at the beginning of a path.
+// 以下规则将被反复应用，直到无法进一步处理为止：
+//  1. 将多个斜杠替换为单个斜杠。
+//  2. 消除每个 . 路径名元素（当前目录）。
+//  3. 消除每个内部的 .. 路径名元素（父目录）
+//     以及它前面的非 .. 元素。
+//  4. 消除开始于根路径的 .. 元素：
+//     即，在路径开始处将 "/.." 替换为 "/"。
 //
-// If the result of this process is an empty string, "/" is returned
+// 如果这个过程的结果是空字符串，则返回 "/"。
+
 func CleanPath(p string) string {
 	const stackBufSize = 128
 
-	// Turn empty string into "/"
+	// 将空字符串转换为 "/"
 	if p == "" {
 		return "/"
 	}
 
-	// Reasonably sized buffer on stack to avoid allocations in the common case.
-	// If a larger buffer is required, it gets allocated dynamically.
+	// 在栈上分配一个合理大小的缓冲区，以避免在常见情况下进行内存分配。
+	// 如果需要更大的缓冲区，则会动态分配。
 	buf := make([]byte, 0, stackBufSize)
 
 	n := len(p)
 
-	// Invariants:
-	//      reading from path; r is index of next byte to process.
-	//      writing to buf; w is index of next byte to write.
+	// 不变量：
+	//      从路径读取；r 是要处理的下一个字节的索引。
+	//      写入到 buf；w 是要写入的下一个字节的索引。
 
-	// path must start with '/'
+	// 路径必须以 '/' 开头
 	r := 1
 	w := 1
 
@@ -53,15 +53,15 @@ func CleanPath(p string) string {
 
 	trailing := n > 1 && p[n-1] == '/'
 
-	// A bit more clunky without a 'lazybuf' like the path package, but the loop
-	// gets completely inlined (bufApp calls).
-	// So in contrast to the path package this loop has no expensive function
-	// calls (except make, if needed).
+	// 没有像 path 包那样的 'lazybuf' 可能会显得有些笨拙，但循环
+	// 完全内联（bufApp 调用）。
+	// 因此，与 path 包相比，这个循环没有昂贵的函数
+	// 调用（除了必要时的 make）
 
 	for r < n {
 		switch {
 		case p[r] == '/':
-			// empty path element, trailing slash is added after the end
+			// 空路径元素，尾随斜杠将在末尾添加
 			r++
 
 		case p[r] == '.' && r+1 == n:
@@ -92,8 +92,8 @@ func CleanPath(p string) string {
 			}
 
 		default:
-			// Real path element.
-			// Add slash if needed
+			// 真实路径元素。
+			// 如有必要，添加斜杠
 			if w > 1 {
 				bufApp(&buf, p, w, '/')
 				w++
@@ -108,35 +108,35 @@ func CleanPath(p string) string {
 		}
 	}
 
-	// Re-append trailing slash
+	// 重新添加尾部斜杠
 	if trailing && w > 1 {
 		bufApp(&buf, p, w, '/')
 		w++
 	}
 
-	// If the original string was not modified (or only shortened at the end),
-	// return the respective substring of the original string.
-	// Otherwise return a new string from the buffer.
+	// 如果原始字符串未被修改（或仅在末尾被缩短），
+	// 返回原始字符串的相应子字符串。
+	// 否则从缓冲区返回一个新字符串。
 	if len(buf) == 0 {
 		return p[:w]
 	}
 	return string(buf[:w])
 }
 
-// Internal helper to lazily create a buffer if necessary.
-// Calls to this function get inlined.
+// 内部辅助函数，如有必要，可延迟创建缓冲区。
+// 对此函数的调用将被内联。
 func bufApp(buf *[]byte, s string, w int, c byte) {
 	b := *buf
 	if len(b) == 0 {
-		// No modification of the original string so far.
-		// If the next character is the same as in the original string, we do
-		// not yet have to allocate a buffer.
+		// 到目前为止，原始字符串未被修改。
+		// 如果下一个字符与原始字符串中的字符相同，
+		// 我们还不需要分配缓冲区。
 		if s[w] == c {
 			return
 		}
 
-		// Otherwise use either the stack buffer, if it is large enough, or
-		// allocate a new buffer on the heap, and copy all previous characters.
+		// 否则使用栈缓冲区（如果其足够大），或者
+		// 在堆上分配一个新的缓冲区，并复制所有之前的字符。
 		if l := len(s); l > cap(b) {
 			*buf = make([]byte, len(s))
 		} else {
